@@ -61,13 +61,17 @@ class Twitter2Campfire
     entries.select { |e| e["id_str"] > archived_id_str }
   end
   
-  def publish_entries
+  def publish_entries(to_campfire = true)
     posts.reverse.each do |post|
-      room.tweet "https://twitter.com/#{post['from_user']}/statuses/#{post['id_str']}"
+      if to_campfire
+        campfire.tweet "https://twitter.com/#{post['from_user']}/statuses/#{post['id_str']}"
+      else
+        puts "https://twitter.com/#{post['from_user']}/statuses/#{post['id_str']}"
+      end
     end
     save_latest
   end
-  
+
   def url_encode(plaintext)
     CGI.escape(plaintext.to_s).gsub('+', '%20')#.gsub('%7E', '~')
   end
