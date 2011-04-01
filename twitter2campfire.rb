@@ -1,38 +1,37 @@
 require 'rubygems'
 require 'tinder'
-require 'rio'
-require 'hpricot'
-require 'ostruct'
-require 'time'
-require 'htmlentities'
-require 'digest/sha1'
+require 'open-uri'
+require 'json'
+require 'cgi'
 
 class Twitter2Campfire
-  attr_accessor :feed, :campfire, :room, :cachefile, :options
+  attr_accessor :room, :query, :cachefile, :campfire, :options
   
-  def initialize(feed,campfire,room, cachefile = 'archived_latest.txt', options = {})
-    self.feed = feed
-    self.campfire = campfire
-    self.room = campfire.find_room_by_name room
+  SITE = "http://search.twitter.com/search.json?q="
+
+  def initialize(query, config_file = nil, cachefile = 'archived_latest.txt', options = {})
+    config_file ||= File.join(File.dirname(__FILE__), "config/campfire.yml")
+    self.query = query
     self.cachefile = cachefile
     self.options = options
-  end
-  
-  def raw_feed
-    @doc ||= Hpricot(rio(feed) > (string ||= ""))
+
+    config = YAML.load_file(config_file)
+    account = config["subdomain"]
+    token = config["token"]
+    room_name = config["room"]
+
+    self.campfire = Tinder::Campfire.new account,
+      :token => token,
+      :ssl => true
+
+    self.room = campfire.find_room_by_name room_name
   end
   
   def entries
-    (raw_feed/'entry').map do |e|
-      OpenStruct.new(
-        :from => (e/'name').inner_html,
-        :text => (e/'title').inner_html,
-        :link => (e/'link[@rel=alternate]').first['href'],
-        :checksum => Digest::SHA1.hexdigest((e/'title').inner_html),
-        :date => Time.parse((e/'updated').inner_html),
-        :twicture => "http://twictur.es/i/#{(e/'id').inner_html.split(':').last}.gif"
-        )
-    end
+    url = SITE + url_encode(query)
+    buffer = open(url).read
+    results = JSON.parse(buffer)
+    results["results"]    
   end
   
   def latest_tweet
@@ -40,20 +39,14 @@ class Twitter2Campfire
   end
   
   def save_latest
-    f = File.exist?(cachefile)? File.open(cachefile, 'a') : File.new(cachefile, 'w')
-    f.write("\n#{new_archive_contents}")
+    # overwrite it with just the latest id_str
+    File.open(cachefile, 'w') do |f|
+      f.write(archived_id_str)
+    end
   end
   
-  def checksums
-    entries.map { |e| e.checksum }.to_a
-  end
-  
-  def archived_checksums
-    archive_file.split("\n")
-  end
-  
-  def new_checksums
-    checksums.flatten.uniq[0,1000]
+  def archived_id_str
+    archive_file.strip
   end
   
   def archive_file
@@ -64,27 +57,18 @@ class Twitter2Campfire
     end
   end
   
-  def new_archive_contents
-    "#{new_checksums.join("\n")}"
-  end
-  
   def posts
-    entries.reject { |e| archived_checksums.include?(e.checksum) }
-  end
-  
-  def coder
-    HTMLEntities.new
+    entries.select { |e| e["id_str"] > archived_id_str }
   end
   
   def publish_entries
     posts.reverse.each do |post|
-      if options[:twicture]
-        room.speak post.twicture
-      else
-        room.speak "#{coder.decode(post.from)}: #{coder.decode(post.text)} #{post.link}"
-      end
+      room.tweet "https://twitter.com/#{post['from_user']}/statuses/#{post['id_str']}"
     end
     save_latest
   end
   
+  def url_encode(plaintext)
+    CGI.escape(plaintext.to_s).gsub('+', '%20')#.gsub('%7E', '~')
+  end
 end
