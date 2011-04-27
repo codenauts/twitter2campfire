@@ -29,7 +29,7 @@ class Twitter2Campfire
   
   def entries
     url = SITE + url_encode(query)
-    buffer = open(url).read
+    buffer = open(url, "User-Agent" => "your_domain_name.com").read
     results = JSON.parse(buffer)
     results["results"]    
   end
@@ -64,7 +64,7 @@ class Twitter2Campfire
   def publish_entries(to_campfire = true)
     posts.reverse.each do |post|
       if to_campfire
-        campfire.tweet "https://twitter.com/#{post['from_user']}/statuses/#{post['id_str']}"
+        room.tweet "https://twitter.com/#{post['from_user']}/statuses/#{post['id_str']}"
       else
         puts "https://twitter.com/#{post['from_user']}/statuses/#{post['id_str']}"
       end

@@ -19,7 +19,10 @@ git clone git://github.com/harleytt/twitter2campfire.git
 
 3) Copy config/campfire.sample.yml to config/campfire.yml and edit with your campfire credentials
 
-4) Set a cron script to run the script every minute. Something like this should do it:
+4) If you run this script on Amazon EC2, you have to specify the User-Agent string. "Twitter recommends setting the User-Agent to your domain name, so they can check out sites that are causing problems and get in touch with you."
+See more at: http://stackoverflow.com/questions/1021212/twitter-search-api-blocked-from-amazon-ec2-in-ruby-only-not-curl-is-this-net
+
+5) Set a cron script to run the script every minute. Something like this should do it:
 
 * * * * * cd /home/twitter2campfire/; ruby run.rb
 
