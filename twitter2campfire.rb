@@ -41,7 +41,7 @@ class Twitter2Campfire
   def save_latest
     # overwrite it with just the latest id_str
     File.open(cachefile, 'w') do |f|
-      f.write(archived_id_str)
+      f.write(latest_tweet["id_str"])
     end
   end
   
