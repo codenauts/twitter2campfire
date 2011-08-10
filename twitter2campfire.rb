@@ -58,7 +58,7 @@ class Twitter2Campfire
   end
   
   def posts
-    entries.select { |e| e["id_str"] > archived_id_str }
+    entries.select { |e| e["id_str"].to_i > archived_id_str.to_i }
   end
   
   def publish_entries(to_campfire = true)
